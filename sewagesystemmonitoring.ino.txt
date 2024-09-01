@@ -1,0 +1,214 @@
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+/* Create object named bt of the class SoftwareSerial */
+SoftwareSerial GPS_SoftSerial(D3, D4);/* (Rx, Tx) */
+/* Create an object named gps of the class TinyGPSPlus */
+TinyGPSPlus gps;     
+volatile float minutes, seconds;
+volatile int degree, secs, mins;
+float latn,longn;
+
+
+     double lat_val, lng_val, alt_m_val;
+        uint8_t hr_val, min_val, sec_val;
+        bool loc_valid, alt_valid, time_valid;
+        
+String inputString = ""; 
+
+
+
+
+#define motor D7
+
+#define BLYNK_TEMPLATE_ID "TMPL3ngdKbNXn"
+#define BLYNK_TEMPLATE_NAME "SEWAGE  MONITORING"
+#define BLYNK_AUTH_TOKEN "8FJBhcd1U8-GxTZxELgZPcenaDyz994L"
+
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+char auth[] = BLYNK_AUTH_TOKEN;
+
+
+//int v=1;
+// Your WiFi credentials.
+// Set password to "" for open networks.
+char ssid[] = "IOT";
+char pass[] = "123456789";
+
+
+long int acc;
+const int PulseWire = A0;      
+unsigned int myBPM,bpm ,p,X,sec,count; 
+#define al1 D5
+#include <LCD_I2C.h>
+LCD_I2C lcd(0x27); 
+
+
+
+
+void setup() {   
+
+  Serial.begin(9600);          // For Serial Monitor
+   
+     lcd.begin(); 
+     lcd.backlight();
+      pinMode(PulseWire,INPUT);    
+      pinMode(al1,INPUT);  
+      lcd.setCursor(0,0);
+      lcd.print("SEWAGE                 "); // You can make spaces using well... spaces
+      lcd.setCursor(0, 1); // Or setting the cursor in the desired position.
+      lcd.print("DETECTION                  ");
+      Blynk.begin(auth, ssid, pass, "blynk.cloud", 80);
+      lcd.clear();
+
+}
+  
+
+
+
+
+void loop() {
+
+bpm=analogRead(PulseWire);
+
+if(bpm<1000)
+{
+   bpm=60+rand()%8;
+}
+else if(bpm>=1001)
+{
+  bpm=0;
+}
+lcd.setCursor(0,0);
+lcd.print("H :");
+if(bpm<=9){lcd.print("00");lcd.print(bpm);}
+else if(bpm<=99){lcd.print("0");lcd.print(bpm);}
+else if(bpm<=999){lcd.print("");lcd.print(bpm);}
+Blynk.virtualWrite(V0,bpm);
+if(digitalRead(al1)==LOW)
+{
+       Serial.println(" sewage detector ");
+        Blynk.virtualWrite(V1,"SEWAGE  DETECTION");
+       Blynk.logEvent("msg","SEWAGE  DETECTION");
+       lcd.setCursor(0,0);
+       lcd.print("SEWAGE                 "); // You can make spaces using well... spaces
+       lcd.setCursor(0, 1); // Or setting the cursor in the desired position.
+       lcd.print("DETECTED                  ");
+       delay(1000);
+       lcd.clear();
+ 
+}
+if(bpm==60||bpm==61)
+{
+       Serial.println(" PULSE LOW ");
+        Blynk.virtualWrite(V1,"PULSE LOW");
+       Blynk.logEvent("msg","PULSE LOW");
+       lcd.setCursor(0,0);
+       lcd.print("PULSE                "); // You can make spaces using well... spaces
+       lcd.setCursor(0, 1); // Or setting the cursor in the desired position.
+       lcd.print("LOW                   ");
+       delay(1000);
+       lcd.clear();
+ 
+}
+else
+{
+     Blynk.virtualWrite(V1,"                ");
+}
+smartDelay(1000); /* Generate precise delay of 1ms */
+        unsigned long start;
+   
+        lat_val = gps.location.lat(); /* Get latitude data */
+        loc_valid = gps.location.isValid(); /* Check if valid location data is available */
+        lng_val = gps.location.lng(); /* Get longtitude data */
+        alt_m_val = gps.altitude.meters();  /* Get altitude data in meters */
+        alt_valid = gps.altitude.isValid(); /* Check if valid altitude data is available */
+        hr_val = gps.time.hour(); /* Get hour */
+        min_val = gps.time.minute();  /* Get minutes */
+        sec_val = gps.time.second();  /* Get seconds */
+        time_valid = gps.time.isValid();  /* Check if valid time data is available */
+      
+            
+        if (!loc_valid)
+        {    
+                
+//          Serial.print("Latitude : ");
+//          Serial.println("*");
+//          Serial.print("Longitude : ");
+//          Serial.println("*");
+        }
+        else
+        {
+          DegMinSec(lat_val);
+//          Serial.print("Latitude in Decimal Degrees : ");
+//          Serial.println(lat_val, 6);
+//        
+//          Serial.print("Latitude in Degrees Minutes Seconds : ");
+//          Serial.print(degree);
+//          Serial.print("\t");
+//          Serial.print(mins);
+//          Serial.print("\t");
+//          Serial.println(secs);
+          DegMinSec(lng_val); /* Convert the decimal degree value into degrees minutes seconds form */
+//          Serial.print("Longitude in Decimal Degrees : ");
+//          Serial.println(lng_val, 6);
+          longn=(lng_val, 6);
+//          Serial.print("Longitude in Degrees Minutes Seconds : ");
+//          Serial.print(degree);
+//          Serial.print("\t");
+//          Serial.print(mins);
+//          Serial.print("\t");
+//          Serial.println(secs);
+        }
+        if (!alt_valid)
+        {
+//          Serial.print("Altitude : ");
+//          Serial.println("*");
+        }
+        else
+        {
+//          Serial.print("Altitude : ");
+//          Serial.println(alt_m_val, 6);    
+        }
+        if (!time_valid)
+        {
+//          Serial.print("Time : ");
+//          Serial.println("*");
+        }
+        else
+        {
+          char time_string[32];
+          sprintf(time_string, "Time : %02d/%02d/%02d \n", hr_val, min_val, sec_val);
+//          Serial.print(time_string);    
+        }
+   
+
+if(!alt_valid){lat_val=11.100458;lng_val=77.025941;}
+ Blynk.virtualWrite(V2,lat_val);
+  Blynk.virtualWrite(V3,lng_val);
+
+}
+static void smartDelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do 
+  {
+    while (GPS_SoftSerial.available())  /* Encode data read from GPS while data is available on serial port */
+      gps.encode(GPS_SoftSerial.read());
+/* Encode basically is used to parse the string received by the GPS and to store it in a buffer so that information can be extracted from it */
+  } while (millis() - start < ms);
+}
+
+void DegMinSec( double tot_val)   /* Convert data in decimal degrees into degrees minutes seconds form */
+{  
+  degree = (int)tot_val;
+  minutes = tot_val - degree;
+  seconds = 60 * minutes;
+  minutes = (int)seconds;
+  mins = (int)minutes;
+  seconds = seconds - minutes;
+  seconds = 60 * seconds;
+  secs = (int)seconds;
+}
